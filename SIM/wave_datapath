@@ -1,0 +1,36 @@
+onerror {resume}
+quietly WaveActivateNextPane {} 0
+add wave -noupdate /tb_datapath/clk
+add wave -noupdate /tb_datapath/TBactive
+add wave -noupdate -radix hexadecimal /tb_datapath/mapDatapath/BusSignal
+add wave -noupdate -radix binary /tb_datapath/Control_BusAccess
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_IRin
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_RF_addr
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_RF_WregEn
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_RF_rst
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_Ain
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_Cin
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_ALU_op
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_Mem_in
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_Data_MemEn
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_Pcin
+add wave -noupdate -radix hexadecimal /tb_datapath/Control_PCsel
+add wave -noupdate -radix hexadecimal /tb_datapath/Out_Op_code
+TreeUpdate [SetDefaultTree]
+WaveRestoreCursors {{Cursor 1} {861964 ps} 0}
+quietly wave cursor active 1
+configure wave -namecolwidth 246
+configure wave -valuecolwidth 100
+configure wave -justifyvalue left
+configure wave -signalnamewidth 0
+configure wave -snapdistance 10
+configure wave -datasetprefix 0
+configure wave -rowmargin 4
+configure wave -childrowmargin 2
+configure wave -gridoffset 0
+configure wave -gridperiod 1
+configure wave -griddelta 40
+configure wave -timeline 0
+configure wave -timelineunits ps
+update
+WaveRestoreZoom {757333 ps} {3888066 ps}
