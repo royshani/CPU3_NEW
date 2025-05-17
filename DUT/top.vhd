@@ -1,53 +1,142 @@
-LIBRARY ieee;
+LIBRARY ieee; -- Import IEEE standard logic library
 USE ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
-USE work.aux_package.all;
+USE work.aux_package.all; -- Import component declarations from aux_package
+
 -------------------------------------
 ENTITY top IS
-generic( Dwidth: integer:=16;
-		 Awidth: integer:=6;
-		 dept: integer:=64;
-		 StateLength: integer:=5);
-port(	clk, rst, ena: IN std_logic; -- fed from TB
-		done: OUT std_logic_vector(1 DOWNTO 0) := "00"; -- DONE bit to TB
+-- Top-level entity for integrating Datapath and Control units
 
-		dataIn: IN std_logic_vector(Dwidth-1 downto 0); -- write content into ProgMem, from TB through top
-		writeaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into ProgMem, from TB through top
-		prog_wren: IN std_logic; -- enable bit to write into ProgMem, from TB through top
-		TBactive: IN std_logic; -- enable bit to write from TB instead of internally
-		data_writeaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into DataMem, from TB through top
-		data_writeData: IN std_logic_vector(Dwidth-1 downto 0); -- write data into DataMem, from TB through top
-		data_wren: IN std_logic; -- enable bit to write into DataMem, from TB through top
-		data_readdata: out std_logic_vector(Dwidth-1 downto 0); -- read data from DataMem, from TB through top
-		data_readaddr: IN std_logic_vector(Awidth-1 downto 0) -- write address into DataMem, from TB through top
-	); 
+generic(
+    Dwidth      : integer := 16; -- Data width
+    Awidth      : integer := 6;  -- Address width (2^6 = 64 locations)
+    dept        : integer := 64; -- Depth of memory
+    StateLength : integer := 5   -- Number of bits to represent FSM states
+);
+port(
+    clk_i              : in std_logic;  -- Clock signal fed from TB
+    rst_i              : in std_logic;  -- Reset signal fed from TB
+    ena_i              : in std_logic;  -- Enable signal for control unit fed from TB
+    done_o             : out std_logic; -- Done flag to TB
+	
+
+		-- TB inputs
+	DTCM_tb_out    	    : out std_logic_vector(Dwidth-1 downto 0);
+	tb_active_i         : in std_logic:= '0';
+	DTCM_tb_addr_in_i   : in std_logic_vector(Awidth-1 downto 0);
+	DTCM_tb_wr_i        : in std_logic;
+	DTCM_tb_addr_out_i  : in std_logic_vector(Awidth-1 downto 0);
+	DTCM_tb_in_i      	: in std_logic_vector(Dwidth-1 downto 0);
+	ITCM_tb_in_i        : in std_logic_vector(Dwidth-1 downto 0);
+	ITCM_tb_addr_in_i   : in std_logic_vector(Awidth-1 downto 0);
+	ITCM_tb_wr_i        : in std_logic
+);
 END top;
-------------- complete the top Architecture code --------------
+
 ARCHITECTURE topArch OF top IS 
-	------* ALL COMPONENT DECLERATIONS ARE WITHIN AUX_PACKAGE.VHD *------
 
-	signal alu_c, alu_z, alu_n: std_logic; -- Datapath --> Control
-	signal opcode: std_logic_vector(3 downto 0); -- Datapath --> Control
-	signal RF_out, Data_mem_out, Cout, Imm2_in, Imm1_in, IRin: std_logic; -- Control --> Datapath
-	signal RF_addr, PCsel: std_logic_vector(1 downto 0); -- Control --> Datapath
-	signal RF_WregEn, RF_rst, Ain, Cin, Mem_in, Data_MemEn, Pcin: std_logic; -- Control --> Datapath
-	signal ALU_op: std_logic_vector(2 downto 0); -- Control --> Datapath
-	signal status_bits: std_logic_vector(12 downto 0);
+    -- Signals from Datapath to Control (flags and opcode)
+    signal alu_c_o, alu_z_o, alu_n_o : std_logic;                    -- ALU flags: carry, zero, negative
+    signal opcode                  : std_logic_vector(3 downto 0); -- Opcode extracted from instruction
+
+    -- Control signals sent to Datapath
+
+	 signal DTCM_addr_sel_i  : std_logic;
+	 signal DTCM_addr_out_i  : std_logic;
+	 signal DTCM_addr_in_i   : std_logic;
+	 signal DTCM_out_i       : std_logic;
+	 signal DTCM_wr_i 		  : std_logic;
+	 signal ALU_op          : std_logic_vector(2 downto 0);
+	 signal Ain_i            : std_logic;
+	 signal RF_WregEn_i      : std_logic;
+	 signal RF_out_i         : std_logic;
+	 signal RF_addr_rd_i     : std_logic_vector(1 downto 0);
+	 signal RF_addr_wr_i     : std_logic_vector(1 downto 0);
+	 signal IRin_i           : std_logic;
+	 signal PCin           : std_logic;
+	 signal PCsel          : std_logic_vector(1 downto 0);
+	 signal Imm1_in_i        : std_logic;
+	 signal Imm2_in_i        : std_logic;
+	 signal status_bits_r    : std_logic_vector(14 downto 0);
+	 signal done_r			  : std_logic;
+
 BEGIN
------------- PORT MAP INITIATLIZATION ------------
-	mapDatapath: Datapath generic map(Dwidth,Awidth,dept) port map (
-		clk, DataIn, writeaddr, prog_wren, TBactive, data_writeaddr, data_writeData,
-		data_wren, data_readdata, data_readaddr, alu_c, alu_z, alu_n, opcode,
-		RF_out, Data_mem_out, Cout, Imm2_in, Imm1_in, IRin, RF_addr, PCsel,
-		RF_WregEn, RF_rst, Ain, Cin, Mem_in, Data_MemEn, Pcin, ALU_op);
-		
-	mapControl: Control generic map(StateLength) port map(
-	clk, rst, ena, alu_c, alu_z, alu_n, opcode,
-	RF_out, Data_mem_out, Cout, Imm2_in, Imm1_in, IRin, RF_addr, PCsel,
-	RF_WregEn, RF_rst, Ain, Cin, Mem_in, Data_MemEn, Pcin, ALU_op, status_bits); -- open = status bits [for now?]
-	
-	done(0) <= status_bits(8);
-	
-END topArch;
 
+    -- Datapath Instantiation
+    mapDatapath: Datapath generic map(Dwidth, Awidth, dept) port map(
+        clk_i              => clk_i,
+        ena_i              => ena_i,
+		rst_i              => rst_i,
+
+        alu_c_o            => alu_c_o,
+        alu_z_o            => alu_z_o,
+        alu_n_o            => alu_n_o,
+        o_opcode           => opcode,
+		
+
+		
+        DTCM_wr_i          => DTCM_wr_i,
+        DTCM_addr_sel_i    => DTCM_addr_sel_i,
+        DTCM_addr_out_i    => DTCM_addr_out_i,
+        DTCM_addr_in_i     => DTCM_addr_in_i,
+        DTCM_out_i         => DTCM_out_i,
+        ALU_op            => ALU_op,
+        Ain_i              => Ain_i,
+        RF_WregEn_i        => RF_WregEn_i,
+        RF_out_i           => RF_out_i,
+        RF_addr_rd_i       => RF_addr_rd_i,
+        RF_addr_wr_i       => RF_addr_wr_i,
+        IRin_i             => IRin_i,
+        PCin             => PCin,
+        PCsel            => PCsel,
+        Imm1_in_i          => Imm1_in_i,
+        Imm2_in_i          => Imm2_in_i,
+
+        DTCM_tb_out        => DTCM_tb_out,
+        tb_active_i        => tb_active_i,
+        DTCM_tb_addr_in_i  => DTCM_tb_addr_in_i,
+		DTCM_tb_addr_out_i => DTCM_tb_addr_out_i,
+        DTCM_tb_wr_i       => DTCM_tb_wr_i,
+        DTCM_tb_in_i       => DTCM_tb_in_i,
+        ITCM_tb_in_i       => ITCM_tb_in_i,
+        ITCM_tb_addr_in_i  => ITCM_tb_addr_in_i,
+        ITCM_tb_wr_i       => ITCM_tb_wr_i
+    );
+
+
+    -- Control Unit Instantiation
+    mapControl: ControlUnit generic map(StateLength) port map(
+        clk_i              => clk_i,
+        rst_i              => rst_i,
+        ena_i              => ena_i,
+
+        ALU_c_i            => alu_c_o,
+        ALU_z_i            => alu_z_o,
+        ALU_n_i            => alu_n_o,
+        i_opcode           => opcode,
+		done			   => done_r,
+        DTCM_wr_o          => DTCM_wr_i,
+        DTCM_addr_sel_o    => DTCM_addr_sel_i,
+        DTCM_addr_out_o    => DTCM_addr_out_i,
+        DTCM_addr_in_o     => DTCM_addr_in_i,
+        DTCM_out_o         => DTCM_out_i,
+        ALU_op            => ALU_op,
+        Ain_o              => Ain_i,
+        RF_WregEn_o        => RF_WregEn_i,
+        RF_out_o           => RF_out_i,
+        RF_addr_rd_o       => RF_addr_rd_i,
+        RF_addr_wr_o       => RF_addr_wr_i,
+        IRin_o             => IRin_i,
+        PCin             => PCin,
+        PCsel            => PCsel,
+        Imm1_in_o          => Imm1_in_i,
+        Imm2_in_o          => Imm2_in_i,
+
+
+        status_bits_o      => status_bits_r(14 downto 0)
+        
+    );
+
+	done_o <= done_r;
+END topArch;

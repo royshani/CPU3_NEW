@@ -1,12 +1,17 @@
-library ieee;
+library IEEE;
+
 use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
+use std.textio.all;
+use ieee.std_logic_textio.all;
+USE work.aux_package.all;
+USE ieee.numeric_std.all;
 --------------------------------------------------------------
 entity RF is
 generic( Dwidth: integer:=16;
 		 Awidth: integer:=4);
-port(	clk,rst,WregEn: in std_logic;	
+port(	clk,rst,WregEn: in std_logic;	--WregEn is RFin 
 		WregData:	in std_logic_vector(Dwidth-1 downto 0);
 		WregAddr,RregAddr:	
 					in std_logic_vector(Awidth-1 downto 0);
@@ -36,5 +41,6 @@ begin
   end process;
 	
   RregData <= sysRF(conv_integer(RregAddr));
+  
 
 end behav;

@@ -2,11 +2,12 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
+use work.aux_package.all;
 --------------------------------------------------------------
 entity dataMem is
 generic( Dwidth: integer:=16;
-		 Awidth: integer:=6; -- 2^6=64. address of each line in the Data memory segement
-		 dept:   integer:=64); -- 'size' of the Data memory segement (amount of 'lines')
+		 Awidth: integer:=6;
+		 dept:   integer:=64);
 port(	clk,memEn: in std_logic;	
 		WmemData:	in std_logic_vector(Dwidth-1 downto 0);
 		WmemAddr,RmemAddr:	
@@ -26,6 +27,7 @@ begin
   begin
 	if (clk'event and clk='1') then
 		RmemData <= sysRAM(conv_integer(RmemAddr));
+		report "!!!! mem updated" severity note;
 	    if (memEn='1') then
 		    -- index is type of integer so we need to use 
 			-- buildin function conv_integer in order to change the type

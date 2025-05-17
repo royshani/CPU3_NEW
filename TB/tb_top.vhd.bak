@@ -1,0 +1,156 @@
+library IEEE;
+use std.textio.all;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_arith.all;
+use ieee.std_logic_unsigned.all;
+--use ieee.std_logic_textio.all;
+use work.aux_package.all;
+
+entity tb_top is
+    generic(
+        tick   : time    := 50 ns;
+        Dwidth : integer := 16;
+        Awidth : integer := 6;
+        dept   : integer := 64
+    );
+end tb_top;
+
+architecture tb_top_arch of tb_top is
+
+    constant input_ProgData_loc : string := "C:/Users/yanai/Local/Documents/Yanai/University/LABS/CPU Architercture/Lab3/datapath_code/ITCMinit.txt";
+    constant input_DataMem_loc  : string := "C:/Users/yanai/Local/Documents/Yanai/University/LABS/CPU Architercture/Lab3/datapath_code/DTCMinit.txt";
+    constant output_file_loc    : string := "C:/Users/yanai/Local/Documents/Yanai/University/LABS/CPU Architercture/Lab3/datapath_code/DTCMcontent.txt";
+
+    signal so_done              : std_logic;
+    signal clk, ena, rst        : std_logic;
+    signal TBactive             : std_logic;
+    signal ProgMem_WriteData    : std_logic_vector(Dwidth-1 downto 0);
+    signal ProgMem_WriteAddr    : std_logic_vector(Awidth-1 downto 0);
+    signal ProgMem_EnWrite      : std_logic;
+    signal DataMem_EnWrite      : std_logic;
+    signal DataMem_WriteAddr    : std_logic_vector(Awidth-1 downto 0);
+    signal DataMem_WriteData    : std_logic_vector(Dwidth-1 downto 0);
+    signal DataMem_ReadData     : std_logic_vector(Dwidth-1 downto 0);
+    signal DataMem_ReadAddr     : std_logic_vector(Awidth-1 downto 0);
+    signal data_done_reading    : std_logic := '0';
+    signal prog_done_reading    : std_logic := '0';
+    signal data_writing         : std_logic := '0';
+    signal data_line_counter    : integer := 0;
+    signal XXX                  : std_logic_vector(Dwidth-1 downto 0) := (others => 'X');
+
+begin
+
+    top_inst: entity work.top
+        generic map(Dwidth, Awidth, dept, 5)
+        port map(
+            clk_i              => clk,
+            rst_i              => rst,
+            ena_i              => ena,
+            done_o             => so_done,
+            DTCM_tb_out        => DataMem_ReadData,
+            tb_active_i        => TBactive,
+            DTCM_tb_addr_in_i  => DataMem_WriteAddr,
+            DTCM_tb_wr_i       => DataMem_EnWrite,
+            DTCM_tb_addr_out_i => DataMem_ReadAddr,
+            DTCM_tb_in_i       => DataMem_WriteData,
+            ITCM_tb_in_i       => ProgMem_WriteData,
+            ITCM_tb_addr_in_i  => ProgMem_WriteAddr,
+            ITCM_tb_wr_i       => ProgMem_EnWrite
+        );
+
+    rst_process: process
+    begin
+        rst <= '1';
+        wait for 100 ns;
+        rst <= '0';
+        wait;
+    end process;
+
+    clock_gen: process
+    begin
+        clk <= '0';
+        wait for tick;
+        clk <= '1';
+        wait for tick;
+    end process;
+
+    ena <= prog_done_reading and data_done_reading;
+    TBactive <= not (prog_done_reading and data_done_reading) or data_writing;
+
+    ReadData: process
+        file f : text open read_mode is input_DataMem_loc;
+        variable L : line;
+        variable val : std_logic_vector(Dwidth-1 downto 0);
+        variable LineCounter : integer := 0;
+    begin
+        wait for 100 ns;
+        DataMem_EnWrite <= '1';
+        while not endfile(f) loop
+            readline(f, L);
+            read(L, val);
+            DataMem_WriteData <= val;
+            DataMem_WriteAddr <= conv_std_logic_vector(LineCounter, Awidth);
+			report "[DataWriteAddr="& to_string(DataMem_WriteAddr) &"]" severity note;
+			report "[DataWriteData="& to_string(DataMem_WriteData) &"]" severity note;
+            LineCounter := LineCounter + 1;
+            wait for tick;
+        end loop;
+        DataMem_EnWrite <= '0';
+        file_close(f);
+        report "Finished loading DataMem";
+        data_line_counter <= LineCounter;
+        data_done_reading <= '1';
+        wait;
+    end process;
+
+    ReadProgram: process
+        file f : text open read_mode is input_ProgData_loc;
+        variable L : line;
+        variable val : std_logic_vector(Dwidth-1 downto 0);
+        variable LineCounter : integer := 0;
+    begin
+        wait for 100 ns;
+        ProgMem_EnWrite <= '1';
+        while not endfile(f) loop
+            readline(f, L);
+            read(L, val);
+            ProgMem_WriteData <= val;
+            ProgMem_WriteAddr <= conv_std_logic_vector(LineCounter, Awidth);
+            report "[ProgWriteAddr="& to_string(ProgMem_WriteAddr) &"]" severity note;
+			report "[ProgWriteData="& to_string(ProgMem_WriteData) &"]" severity note;
+            LineCounter := LineCounter + 1;
+            wait for tick;
+        end loop;
+        ProgMem_EnWrite <= '0';
+        file_close(f);
+        report "Finished loading ProgMem";
+        prog_done_reading <= '1';
+        wait;
+    end process;
+
+    WriteOut: process
+        file f : text open write_mode is output_file_loc;
+        variable L : line;
+        variable LineCounter : integer := 0;
+    begin
+        wait until so_done = '1';
+        if data_line_counter > 0 then
+            data_writing <= '1';
+            loop
+                DataMem_ReadAddr <= conv_std_logic_vector(LineCounter, Awidth);
+                wait for tick;
+                if DataMem_ReadData /= XXX then
+                    write(L, DataMem_ReadData);
+                    writeline(f, L);
+                    report "LineCounter = " & to_string(LineCounter) severity note;
+                end if;
+                LineCounter := LineCounter + 1;
+                exit when LineCounter = dept;
+            end loop;
+        end if;
+        file_close(f);
+        report "Finished writing to output file successfully" severity note;
+        wait;
+    end process;
+	
+end tb_top_arch;

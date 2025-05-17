@@ -2,66 +2,82 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
+use work.aux_package.all;
 --------------------------------------------------------------
 entity IR is
-generic( Dwidth: integer:=16); -- width of IR register
-port( clk, ena, rst: in std_logic; -- ena = IRin, rst = system_rst
-	  ctrl_RFaddr: in std_logic_vector(1 downto 0);
-	  i_IR_content: in std_logic_vector(Dwidth-1 downto 0);
-	  o_OPCODE, o_addr : out std_logic_vector(3 downto 0); -- o_addr = output of RFaddr mux
-	  o_signext1, o_signext2 : out std_logic_vector(Dwidth-1 downto 0);
-	  o_imm_to_PC : out std_logic_vector(7 downto 0)
-	);
+    generic(Dwidth : integer := 16); -- Instruction register width
+    port(
+        clk_i        : in std_logic;
+        ena_i        : in std_logic;  -- enable = IRin
+        rst_i        : in std_logic;  -- reset = system_rst
+        RFaddr_rd_i  : in std_logic_vector(1 downto 0);
+		RFaddr_wr_i  : in std_logic_vector(1 downto 0);
+        IR_content_i  : in std_logic_vector(Dwidth-1 downto 0);
+
+        o_OPCODE      : out std_logic_vector(3 downto 0);
+        signext1_o    : out std_logic_vector(Dwidth-1 downto 0);
+        signext2_o    : out std_logic_vector(Dwidth-1 downto 0);
+        imm_to_PC_o   : out std_logic_vector(7 downto 0)
+    );
 end IR;
 --------------------------------------------------------------
+
 architecture IRArch of IR is
 
-	signal ra,rb,rc : std_logic_vector(3 downto 0);
-	signal immShort : std_logic_vector(3 downto 0); -- to signext2
-	signal immLong : std_logic_vector(7 downto 0); -- to signext1
-	signal IR_reg : std_logic_vector(Dwidth-1 downto 0); -- IR register
+    -- IR internal register
+    signal IR_q : std_logic_vector(Dwidth-1 downto 0);
+
+    -- Extracted fields
+    signal ra_r, rb_r, rc_r       : std_logic_vector(3 downto 0);
+	signal addr_rd_o, addr_wr_o   : std_logic_vector(3 downto 0);
+    signal immShort_r             : std_logic_vector(3 downto 0);
+    signal immLong_r              : std_logic_vector(7 downto 0);
 
 begin
-	InstructionReg: PROCESS (clk,ena,i_IR_content,rst)
-	BEGIN
-		if rst = '1' then
-			IR_reg <= (others => '0');
-		elsif ena = '1' then -- reset is 0, check enable bit
-			if (clk'EVENT and clk='1') then -- rising edge
-				IR_reg <= i_IR_content;
-			end if;
-		else null; -- might be unneccesary
-		end if;
-		
-	END PROCESS;
-	
-	-- splitting IR regsiter into different fields
-	ra <= IR_reg(11 downto 8);
-	rb <= IR_reg(7 downto 4);
-	rc <= IR_reg(3 downto 0);
-	o_OPCODE <= IR_reg(15 downto 12);
-	immShort <= IR_reg(3 downto 0);
-	immLong <= IR_reg(7 downto 0);
-	o_imm_to_PC <= IR_reg(7 downto 0);
-	
-	-- RFaddr mux - controls which 4 bits are outputted towards the RF
-	with ctrl_RFaddr select
-		o_addr <= ra when "01",
-				  rb when "10",
-				  rc when "11",
-				  "0000" when others;
 
-	-- Sign extension logic
-	o_signext2 (3 downto 0) <= immShort;
-	with immShort(3) select
-		o_signext2(Dwidth-1 downto 4) <= (others => '1') when '1',
-							       (others => '0') when others;
-	
-	o_signext1(7 downto 0) <= immLong;
-	with immLong(7) select
-		o_signext1(Dwidth-1 downto 8) <= (others => '1') when '1',
-										 (others => '0') when others;
-	
-	
+    -- Instruction register load logic
+    InstructionReg_proc: process(clk_i)
+    begin
+        if rising_edge(clk_i) then
+            if rst_i = '1' then
+                IR_q <= (others => '0');
+            elsif ena_i = '1' then
+                IR_q <= IR_content_i;
+            end if;
+        end if;
+    end process;
 
+    -- Field extraction from IR register
+    o_OPCODE     <= IR_q(15 downto 12);
+    ra_r         <= IR_q(11 downto 8);
+    rb_r         <= IR_q(7 downto 4);
+    rc_r         <= IR_q(3 downto 0);
+    immShort_r   <= IR_q(3 downto 0);
+    immLong_r    <= IR_q(7 downto 0);
+    imm_to_PC_o  <= IR_q(7 downto 0);
+
+    -- Register File address selection
+    with RFaddr_rd_i select -- choose which reg to read from
+        addr_rd_o <= ra_r when "01",
+                  rb_r when "10",
+                  rc_r when "11",
+                  "0000" when others;
+				  
+	with RFaddr_wr_i select -- choose which reg to write to
+        addr_wr_o <= ra_r when "01",
+                  rb_r when "10",
+                  rc_r when "11",
+                  "0000" when others;
+
+    -- Sign-extension of 4-bit immediate
+    signext2_o(3 downto 0) <= immShort_r;
+    with immShort_r(3) select
+        signext2_o(Dwidth-1 downto 4) <= (others => '1') when '1',
+                                         (others => '0') when others;
+
+    -- Sign-extension of 8-bit immediate
+    signext1_o(7 downto 0) <= immLong_r;
+    with immLong_r(7) select
+        signext1_o(Dwidth-1 downto 8) <= (others => '1') when '1',
+                                         (others => '0') when others;
 end IRArch;

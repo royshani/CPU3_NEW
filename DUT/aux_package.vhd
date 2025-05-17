@@ -2,177 +2,344 @@ library IEEE;
 use ieee.std_logic_1164.all;
 
 package aux_package is
----------------------------------------------------------	
-	Component StateLogic is
-		generic( StateLength: integer:=5); -- 2^5 bits to describe states
-		port(	clk, ena, rst: in std_logic; -- coming from TB through top
-				ALU_cflag : in std_logic;
-				i_opcode : in std_logic_vector(3 downto 0);
-				o_currentstate : out std_logic_vector(StateLength-1 downto 0)
-			);
-	end Component;
----------------------------------------------------------
-	Component Control is
-		generic( StateLength: integer:=5); -- 2^5 bits to describe states
-		port(	clk, rst, ena: in std_logic; -- fed from TB
-				ALU_c, ALU_z, ALU_n: in std_logic; -- fed from ALU, through Top*(?)
-				i_opcode: in std_logic_vector(3 downto 0); -- fed from IR, through Top*(?)
-				--- control bits ---
-				RF_out, Data_mem_out, Cout, Imm2_in, Imm1_in, IRin: out std_logic; -- bus access
-				RF_addr, PCsel: out std_logic_vector(1 downto 0);
-				RF_WregEn, RF_rst, Ain, Cin, Mem_in, Data_MemEn, Pcin: out std_logic; -- RF_rst to be used as global reset?
-				ALU_op: out std_logic_vector(2 downto 0);
-				status_bits: out std_logic_vector(12 downto 0) -- status bits, concatenated, including flags (MSBs, C,Z,N,status..)		
-			);
-	end Component;
----------------------------------------------------------
-	Component top IS
-		generic( Dwidth: integer:=16;
-				 Awidth: integer:=6;
-				 dept: integer:=64;
-				 StateLength: integer:=5);
-		port(	clk, rst, ena: IN std_logic; -- fed from TB
-				done: OUT std_logic_vector; -- DONE bit to TB
 
-				dataIn: IN std_logic_vector(Dwidth-1 downto 0); -- write content into ProgMem, from TB through top
-				writeaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into ProgMem, from TB through top
-				prog_wren: IN std_logic; -- enable bit to write into ProgMem, from TB through top
-				TBactive: IN std_logic; -- enable bit to write from TB instead of internally
-				data_writeaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into DataMem, from TB through top
-				data_writeData: IN std_logic_vector(Dwidth-1 downto 0); -- write data into DataMem, from TB through top
-				data_wren: IN std_logic; -- enable bit to write into DataMem, from TB through top
-				data_readdata: out std_logic_vector(Dwidth-1 downto 0); -- read data from DataMem, from TB through top
-				data_readaddr: IN std_logic_vector(Awidth-1 downto 0) -- write address into DataMem, from TB through top
-			); 
-	END Component;
----------------------------------------------------------
-	Component Datapath is
-		generic( Dwidth: integer:=16;
-				 Awidth: integer:=6;
-				 dept: integer:=64);
-		port(	clk: IN std_logic; -- from TB through TOP
-				dataIn: IN std_logic_vector(Dwidth-1 downto 0); -- write content into ProgMem, from TB through top
-				writeaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into ProgMem, from TB through top
-				prog_wren: IN std_logic; -- enable bit to write into ProgMem, from TB through top
-				TBactive: IN std_logic; -- Shown in page 4 diagram, from TB through top
-				data_writeaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into DataMem, from TB through top
-				data_writeData: IN std_logic_vector(Dwidth-1 downto 0); -- write data into DataMem, from TB through top
-				data_wren: IN std_logic; -- enable bit to write into DataMem, from TB through top
-				data_readdata: out std_logic_vector(Dwidth-1 downto 0); -- read data from DataMem, from TB through top
-				data_readaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into DataMem, from TB through top
-				-- Datapath --> Control through top--
-				alu_c, alu_z, alu_n: out std_logic; -- current flags from ALU to Control through top
-				o_opcode: out std_logic_vector(3 downto 0); -- Opcode from IR to Control through top
-				-- Control --> Datapath through top (control bits) --
-				RF_out, Data_mem_out, Cout, Imm2_in, Imm1_in, IRin: IN std_logic;
-				RF_addr, PCsel: IN std_logic_vector(1 downto 0);
-				RF_WregEn, RF_rst, Ain, Cin, Mem_in, Data_MemEn, Pcin: IN std_logic; -- RF_rst to be used as global reset?**
-				ALU_op: IN std_logic_vector(2 downto 0)
-			);
-	end Component;
----------------------------------------------------------
-	Component IR is
-		generic( Dwidth: integer:=16); -- width of IR register
-		port( clk, ena, rst: in std_logic; -- ena = IRin, rst = system_rst
-			  ctrl_RFaddr: in std_logic_vector(1 downto 0);
-			  i_IR_content: in std_logic_vector(Dwidth-1 downto 0);
-			  o_OPCODE, o_addr : out std_logic_vector(3 downto 0); -- o_addr = output of RFaddr mux
-			  o_signext1, o_signext2 : out std_logic_vector(Dwidth-1 downto 0);
-			  o_imm_to_PC : out std_logic_vector(7 downto 0)
-			);
-	end Component;
----------------------------------------------------------
-	Component GenericRegister is
-		generic( Dwidth: integer:=16); -- width of register
-		port( 	clk, ena, rst : in std_logic;
-				i_in : in std_logic_vector(Dwidth-1 downto 0);
-				o_out : out std_logic_vector(Dwidth-1 downto 0)
-			);
-	end Component;
----------------------------------------------------------
-	Component ControlLines is
-		generic( StateLength: integer:=5); -- 2^5 bits to describe states
-		port(	clk, rst: in std_logic;
-				i_state: in std_logic_vector(StateLength-1 downto 0);
-				i_opcode: in std_logic_vector(3 downto 0);
-				alu_c, alu_z, alu_n: in std_logic; -- flags from ALU unit
-				-- control lines --
-				RF_out, Data_mem_out, Cout, Imm2_in, Imm1_in, IRin: out std_logic;
-				RF_addr, PCsel: out std_logic_vector(1 downto 0);
-				RF_WregEn, RF_rst, Ain, Cin, Mem_in, Data_MemEn, Pcin: out std_logic; -- RF_rst to be used as global reset?
-				ALU_op: out std_logic_vector(2 downto 0);
-				-- status lines --
-				o_cflag, o_zflag, o_nflag: out std_logic;
-				status_bits : out std_logic_vector(9 downto 0) -- all status bits concatenated 
-			);
-	end Component;
----------------------------------------------------------
-	Component PCLogic is
-		generic( Awidth: integer:=6 ); -- 2^6=64. address of each line in the Data memory segement)
-		port( clk, i_PCin : in std_logic;
-			  i_PCsel : in std_logic_vector(1 downto 0);
-			  i_IR_imm : in std_logic_vector(7 downto 0); -- VECTOR SIZE MAKES NO SENSE - ASK HANAN
-			  o_currentPC : out std_logic_vector(Awidth-1 downto 0)
-			);
-	end Component;
----------------------------------------------------------
-	Component ALU_main is
-		generic( Dwidth: integer:=16); -- data witdh (16 bit register, same as RF width)
-		port(	i_A, i_B: in std_logic_vector(Dwidth-1 downto 0); -- R[rb] = A, R[rc] = B ***
-				i_ctrl: in std_logic_vector(2 downto 0); -- ALUOP control bits
-				o_C: out std_logic_vector(Dwidth-1 downto 0);
-				o_cflag, o_nflag, o_zflag: out std_logic
-				);
-	end Component;
----------------------------------------------------------
-	Component bus_pour_tristate is
-			generic( Dwidth: integer:=16 );
-			port(
-					i_data: in std_logic_vector(Dwidth-1 downto 0);
-					o_data: out std_logic_vector(Dwidth-1 downto 0);
-					enable_out: in std_logic -- controls whether the data is poured out
-			);
-	end Component;
----------------------------------------------------------
-	Component ProgMem is
-		generic( Dwidth: integer:=16;
-				 Awidth: integer:=6; -- 2^6=64. address of each line in the Data memory segement
-				 dept:   integer:=64); -- 'size' of the Data memory segement (amount of 'lines')
-		port(	clk,memEn: in std_logic;	
-				WmemData:	in std_logic_vector(Dwidth-1 downto 0);
-				WmemAddr,RmemAddr:	
-							in std_logic_vector(Awidth-1 downto 0);
-				RmemData: 	out std_logic_vector(Dwidth-1 downto 0)
+
+--------------------------------------------------------
+-- StateLogic FSM component declaration
+--------------------------------------------------------
+	component StateLogic is
+		generic(StateLength : integer := 5);
+		port(
+			clk_i           : in  std_logic;
+			ena_i           : in  std_logic;
+			rst_i           : in  std_logic;
+			ALU_cflag_i     : in  std_logic;
+			i_opcode        : in  std_logic_vector(3 downto 0);
+			current_state_o : out std_logic_vector(StateLength-1 downto 0)
 		);
-	end Component;
----------------------------------------------------------
-	Component dataMem is
-		generic( Dwidth: integer:=16;
-				 Awidth: integer:=6; -- 2^6=64. address of each line in the Data memory segement
-				 dept:   integer:=64); -- 'size' of the Data memory segement (amount of 'lines')
-		port(	clk,memEn: in std_logic;	
-				WmemData:	in std_logic_vector(Dwidth-1 downto 0);
-				WmemAddr,RmemAddr:	
-							in std_logic_vector(Awidth-1 downto 0);
-				RmemData: 	out std_logic_vector(Dwidth-1 downto 0)
+	end component;
+--------------------------------------------------------
+-- IR component declaration
+--------------------------------------------------------
+	component IR is
+		generic (Dwidth : integer := 16);
+		port (
+			clk_i         : in  std_logic;
+			ena_i         : in  std_logic;
+			rst_i         : in  std_logic;
+			RFaddr_rd_i   : in  std_logic_vector(1 downto 0);
+			RFaddr_wr_i   : in  std_logic_vector(1 downto 0);
+			IR_content_i  : in  std_logic_vector(Dwidth-1 downto 0);
+			o_opcode      : out std_logic_vector(3 downto 0);
+			signext1_o    : out std_logic_vector(Dwidth-1 downto 0);
+			signext2_o    : out std_logic_vector(Dwidth-1 downto 0);
+			imm_to_PC_o   : out std_logic_vector(7 downto 0)
 		);
-	end Component;
----------------------------------------------------------
-	Component FA is
-		port (xi, yi, cin: in std_logic;
-				  s, cout: out std_logic);
-	end Component;
----------------------------------------------------------
-	Component RF is
-		generic( Dwidth: integer:=16;
-				 Awidth: integer:=4);
-		port(	clk,rst,WregEn: in std_logic;	
-				WregData:	in std_logic_vector(Dwidth-1 downto 0);
-				WregAddr,RregAddr:	
-							in std_logic_vector(Awidth-1 downto 0);
-				RregData: 	out std_logic_vector(Dwidth-1 downto 0)
+	end component;
+
+
+--------------------------------------------------------
+-- Generic Register component declaration
+--------------------------------------------------------
+	component GenericRegister is
+		generic(Dwidth : integer := 16);
+		port(
+			clk_i   : in  std_logic;
+			ena_i   : in  std_logic;
+			rst_i   : in  std_logic;
+			d_i    : in  std_logic_vector(Dwidth-1 downto 0);
+			q_o   : out std_logic_vector(Dwidth-1 downto 0)
 		);
-	end Component;
----------------------------------------------------------
+	end component;
+
+--------------------------------------------------------
+-- Full Adder component declaration
+--------------------------------------------------------	
+	component FA is
+		PORT (xi, yi, cin: IN std_logic;
+			      s, cout: OUT std_logic);
+	end component;
+
+--------------------------------------------------------	
+--------------------------------------------------------
+-- ControlUnit component declaration
+--------------------------------------------------------
+	component ControlUnit is
+		generic(StateLength : integer := 5);
+		port(
+			-- Clock, Reset, Enable
+			clk_i         : in std_logic;
+			rst_i         : in std_logic;
+			ena_i         : in std_logic;
+
+			-- ALU status flags
+			ALU_c_i       : in std_logic;
+			ALU_z_i       : in std_logic;
+			ALU_n_i       : in std_logic;
+
+			-- Instruction opcode
+			i_opcode      : in std_logic_vector(3 downto 0);
+
+			-- Datapath control signals
+			DTCM_wr_o       : out std_logic;
+			DTCM_addr_sel_o : out std_logic;
+			DTCM_addr_out_o : out std_logic;
+			DTCM_addr_in_o  : out std_logic;
+			DTCM_out_o      : out std_logic;
+			ALU_op         : out std_logic_vector(2 downto 0);
+			Ain_o           : out std_logic;
+			RF_WregEn_o     : out std_logic;
+			RF_out_o        : out std_logic;
+			RF_addr_rd_o    : out std_logic_vector(1 downto 0);
+			RF_addr_wr_o    : out std_logic_vector(1 downto 0);
+			IRin_o          : out std_logic;
+			PCin          : out std_logic;
+			PCsel         : out std_logic_vector(1 downto 0);
+			Imm1_in_o       : out std_logic;
+			Imm2_in_o       : out std_logic;
+			done			: out std_logic;
+
+			-- Debug/status output
+			status_bits_o   : out std_logic_vector(14 downto 0)
+		);
+	end component;
+
+--------------------------------------------------------
+-- ControlLines component declaration
+--------------------------------------------------------
+	component ControlLines is
+		generic(StateLength : integer := 5);
+		port(
+			-- ControlUnit inputs
+			clk_i        : in std_logic;
+			rst_i        : in std_logic;
+			ena_i        : in std_logic;
+			state_i      : in std_logic_vector(StateLength-1 downto 0);
+			i_opcode     : in std_logic_vector(3 downto 0);
+			ALU_c_i      : in std_logic;
+			ALU_z_i      : in std_logic;
+			ALU_n_i      : in std_logic;
+
+			-- Datapath control signal outputs
+			DTCM_wr_o       : out std_logic;
+			DTCM_addr_sel_o : out std_logic;
+			DTCM_addr_out_o : out std_logic;
+			DTCM_addr_in_o  : out std_logic;
+			DTCM_out_o      : out std_logic;
+			ALU_op         : out std_logic_vector(2 downto 0);
+			Ain_o           : out std_logic;
+			RF_WregEn_o     : out std_logic;
+			RF_out_o        : out std_logic;
+			RF_addr_rd_o    : out std_logic_vector(1 downto 0);
+			RF_addr_wr_o    : out std_logic_vector(1 downto 0);
+			IRin_o          : out std_logic;
+			PCin          : out std_logic;
+			PCsel         : out std_logic_vector(1 downto 0);
+			Imm1_in_o       : out std_logic;
+			Imm2_in_o       : out std_logic;
+
+			-- Output flags and status encoding
+			cflag_o         : out std_logic;
+			zflag_o         : out std_logic;
+			nflag_o         : out std_logic;
+			status_bits_o   : out std_logic_vector(14 downto 0);
+			done            : out std_logic
+		);
+	end component;
+
+--------------------------------------------------------
+-- top component declaration
+--------------------------------------------------------
+	component top is
+		generic(
+			Dwidth      : integer := 16;
+			Awidth      : integer := 6;
+			dept        : integer := 64;
+			StateLength : integer := 5
+		);
+		port(
+			clk_i              : in std_logic;
+			rst_i              : in std_logic;
+			ena_i              : in std_logic;
+			done_o             : OUT std_logic;
+
+
+			
+			-- TB inputs
+			DTCM_tb_out        : out std_logic_vector(Dwidth-1 downto 0);
+			tb_active_i        : in  std_logic;
+			DTCM_tb_addr_in_i  : in  std_logic_vector(Awidth-1 downto 0);
+			DTCM_tb_wr_i       : in  std_logic;
+			DTCM_tb_addr_out_i : in  std_logic_vector(Awidth-1 downto 0);
+			DTCM_tb_in_i       : in  std_logic_vector(Dwidth-1 downto 0);
+			ITCM_tb_in_i       : in  std_logic_vector(Dwidth-1 downto 0);
+			ITCM_tb_addr_in_i  : in  std_logic_vector(Awidth-1 downto 0);
+			ITCM_tb_wr_i       : in  std_logic
+		);
+	end component;
+
+--------------------------------------------------------
+-- RF component declaration
+--------------------------------------------------------
+	component RF is
+		generic(
+			Dwidth : integer := 16;
+			Awidth : integer := 4
+		);
+		port(
+			clk       : in  std_logic;
+			rst       : in  std_logic;
+			WregEn    : in  std_logic;
+			WregData  : in  std_logic_vector(Dwidth-1 downto 0);
+			WregAddr  : in  std_logic_vector(Awidth-1 downto 0);
+			RregAddr  : in  std_logic_vector(Awidth-1 downto 0);
+			RregData  : out std_logic_vector(Dwidth-1 downto 0)
+		);
+	end component;
+
+
+--------------------------------------------------------
+-- dataMem component declaration
+--------------------------------------------------------
+	component dataMem is
+		generic(
+			Dwidth : integer := 16;
+			Awidth : integer := 6;
+			dept   : integer := 64
+		);
+		port(
+			clk       : in  std_logic;
+			memEn     : in  std_logic;
+			WmemData  : in  std_logic_vector(Dwidth-1 downto 0);
+			WmemAddr  : in  std_logic_vector(Awidth-1 downto 0);
+			RmemAddr  : in  std_logic_vector(Awidth-1 downto 0);
+			RmemData  : out std_logic_vector(Dwidth-1 downto 0)
+		);
+	end component;
+
+
+--------------------------------------------------------
+-- ProgMem component declaration
+--------------------------------------------------------
+	component ProgMem is
+		generic(
+			Dwidth : integer := 16;
+			Awidth : integer := 6;
+			dept   : integer := 64
+		);
+		port(
+			clk       : in  std_logic;
+			memEn     : in  std_logic;
+			WmemData  : in  std_logic_vector(Dwidth-1 downto 0);
+			WmemAddr  : in  std_logic_vector(Awidth-1 downto 0);
+			RmemAddr  : in  std_logic_vector(Awidth-1 downto 0);
+			RmemData  : out std_logic_vector(Dwidth-1 downto 0)
+		);
+	end component;
+
+--------------------------------------------------------
+-- ALU_main component declaration
+--------------------------------------------------------
+	component ALU_main is
+		generic (Dwidth : integer := 16);
+		port (
+			reg_a_q_i   : in  std_logic_vector(Dwidth-1 downto 0);
+			reg_b_r_i   : in  std_logic_vector(Dwidth-1 downto 0);
+			i_ctrl	    : in  std_logic_vector(2 downto 0);
+			Ain_i	 	: in  std_logic;
+			result_o    : out std_logic_vector(Dwidth-1 downto 0);
+			cflag_o     : out std_logic;
+			nflag_o     : out std_logic;
+			zflag_o     : out std_logic
+		);
+	end component;
+
+--------------------------------------------------------
+-- PCLogic component declaration
+--------------------------------------------------------
+	component PCLogic is
+		generic(Awidth : integer := 6);
+		port(
+			clk_i         : in  std_logic;
+			i_PCin        : in  std_logic;
+			i_PCsel       : in  std_logic_vector(1 downto 0);
+			IR_imm_i      : in  std_logic_vector(7 downto 0);
+			currentPC_o   : out std_logic_vector(Awidth-1 downto 0)
+		);
+	end component;
+
+--------------------------------------------------------
+-- BidirPin component declaration
+--------------------------------------------------------
+	component BidirPin is
+		generic(Dwidth : integer := 16);
+		port(
+			i_data    : in    std_logic_vector(Dwidth-1 downto 0);
+			enable_out      : in    std_logic;
+			o_data   : inout std_logic_vector(Dwidth-1 downto 0)
+		);
+	end component;
+
+--------------------------------------------------------
+-- BidirPinBasic component declaration
+--------------------------------------------------------
+	component BidirPinBasic is
+		port(
+			writePin : in  std_logic;
+			readPin  : out std_logic;
+			bidirPin : inout std_logic
+		);
+	end component;
+
+--------------------------------------------------------
+-- Datapath component declaration
+--------------------------------------------------------
+	component Datapath is
+		generic(
+			Dwidth : integer := 16;
+			Awidth : integer := 6;
+			dept   : integer := 64
+		);
+		port(
+			clk_i               : in std_logic;
+			ena_i               : in std_logic;
+			rst_i				: in std_logic;
+			
+			alu_c_o             : out std_logic;
+			alu_z_o             : out std_logic;
+			alu_n_o             : out std_logic;
+			o_opcode            : out std_logic_vector(3 downto 0);
+
+			-- control signals
+			DTCM_wr_i           : in std_logic;
+			DTCM_addr_sel_i     : in std_logic;		
+			DTCM_addr_out_i     : in std_logic;	
+			DTCM_addr_in_i      : in std_logic;		
+			DTCM_out_i          : in std_logic;
+			ALU_op             : in std_logic_vector(2 downto 0); 
+			Ain_i               : in std_logic;
+			RF_WregEn_i         : in std_logic;
+			RF_out_i            : in std_logic;
+			RF_addr_rd_i        : in std_logic_vector(1 downto 0);
+			RF_addr_wr_i        : in std_logic_vector(1 downto 0);		
+			IRin_i              : in std_logic;
+			PCin              : in std_logic;
+			PCsel             : in std_logic_vector(1 downto 0);
+			Imm1_in_i           : in std_logic;
+			Imm2_in_i           : in std_logic;
+
+			-- TB inputs/outputs
+			DTCM_tb_out         : out std_logic_vector(Dwidth-1 downto 0);
+			tb_active_i         : in std_logic;
+			DTCM_tb_addr_in_i   : in std_logic_vector(Awidth-1 downto 0);
+			DTCM_tb_addr_out_i  : in std_logic_vector(Awidth-1 downto 0);
+			DTCM_tb_wr_i        : in std_logic;
+			DTCM_tb_in_i        : in std_logic_vector(Dwidth-1 downto 0);
+			ITCM_tb_in_i        : in std_logic_vector(Dwidth-1 downto 0);
+			ITCM_tb_addr_in_i   : in std_logic_vector(Awidth-1 downto 0);
+			ITCM_tb_wr_i        : in std_logic
+						
+		);
+	end component;
 
 end package aux_package;

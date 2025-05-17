@@ -2,123 +2,203 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
-USE work.aux_package.all;
+use work.aux_package.all;
+
 --------------------------------------------------------------
+-- Datapath: Refactored with consistent signal naming (no Reg C)
+--------------------------------------------------------------
+
 entity Datapath is
-generic( Dwidth: integer:=16;
-		 Awidth: integer:=6;
-		 dept: integer:=64);
-port(	clk: IN std_logic; -- from TB through TOP
-		dataIn: IN std_logic_vector(Dwidth-1 downto 0); -- write content into ProgMem, from TB through top
-		writeaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into ProgMem, from TB through top
-		prog_wren: IN std_logic; -- enable bit to write into ProgMem, from TB through top
-		TBactive: IN std_logic; -- Shown in page 4 diagram, from TB through top
-		data_writeaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into DataMem, from TB through top
-		data_writeData: IN std_logic_vector(Dwidth-1 downto 0); -- write data into DataMem, from TB through top
-		data_wren: IN std_logic; -- enable bit to write into DataMem, from TB through top
-		data_readdata: out std_logic_vector(Dwidth-1 downto 0); -- read data from DataMem, from TB through top
-		data_readaddr: IN std_logic_vector(Awidth-1 downto 0); -- write address into DataMem, from TB through top
-		-- Datapath --> Control through top--
-		alu_c, alu_z, alu_n: out std_logic; -- current flags from ALU to Control through top
-		o_opcode: out std_logic_vector(3 downto 0); -- Opcode from IR to Control through top
-		-- Control --> Datapath through top (control bits) --
-		RF_out, Data_mem_out, Cout, Imm2_in, Imm1_in, IRin: IN std_logic;
-		RF_addr, PCsel: IN std_logic_vector(1 downto 0);
-		RF_WregEn, RF_rst, Ain, Cin, Mem_in, Data_MemEn, Pcin: IN std_logic; -- RF_rst - used as global reset (for registers)
-		ALU_op: IN std_logic_vector(2 downto 0)
-	);
+    generic(
+        Dwidth : integer := 16;
+        Awidth : integer := 6;
+        dept   : integer := 64
+    );
+    port(
+        clk_i               : in std_logic;
+		ena_i				: in std_logic;
+		rst_i				: in std_logic;
+
+		
+        alu_c_o             : out std_logic;
+        alu_z_o             : out std_logic;
+        alu_n_o             : out std_logic;
+        o_opcode            : out std_logic_vector(3 downto 0);
+
+		-- control signals
+        DTCM_wr_i       : in std_logic;
+        DTCM_addr_sel_i : in std_logic;		
+        DTCM_addr_out_i : in std_logic;	
+        DTCM_addr_in_i  : in std_logic;		
+        DTCM_out_i      : in std_logic;
+        ALU_op         : in std_logic_vector(2 downto 0); 
+        Ain_i           : in std_logic;
+        RF_WregEn_i     : in std_logic;
+        RF_out_i        : in std_logic;
+        RF_addr_rd_i    : in std_logic_vector(1 downto 0);
+        RF_addr_wr_i    : in std_logic_vector(1 downto 0);		
+        IRin_i          : in std_logic;
+        PCin          : in std_logic;
+        PCsel         : in std_logic_vector(1 downto 0);
+        Imm1_in_i       : in std_logic;
+        Imm2_in_i       : in std_logic;
+
+		-- TB inputs
+		DTCM_tb_out    	    : out std_logic_vector(Dwidth-1 downto 0);
+		tb_active_i         : in std_logic;
+		DTCM_tb_addr_in_i   : in std_logic_vector(Awidth-1 downto 0);
+		DTCM_tb_addr_out_i  : in std_logic_vector(Awidth-1 downto 0);
+		DTCM_tb_wr_i        : in std_logic;
+        DTCM_tb_in_i      	: in std_logic_vector(Dwidth-1 downto 0);
+		ITCM_tb_in_i        : in std_logic_vector(Dwidth-1 downto 0);
+        ITCM_tb_addr_in_i   : in std_logic_vector(Awidth-1 downto 0);
+        ITCM_tb_wr_i        : in std_logic
+
+    );
 end Datapath;
---------------------------------------------------------------
-architecture DataArch of Datapath is
-	signal RFaddrMuxRes : std_logic_vector(3 downto 0); -- RFaddr Mux output
-	signal Tri_in_ext1, Tri_in_ext2 : std_logic_vector(Dwidth-1 downto 0); -- sig-extended Imm1 / Imm2
-	signal imm_to_PC : std_logic_vector(7 downto 0); -- immediate from instruction, IR --> PCLogic
-	signal ProgReadAddr : std_logic_vector(Awidth-1 downto 0); -- PC address, PCLOGIC --> ProgMem
-	signal instruction_to_IR : std_logic_vector(Dwidth-1 downto 0); -- Instruction. ProgMem --> IR
-	signal BusSignal : std_logic_vector(Dwidth-1 downto 0); -- the bus of the CPU
-	signal Tri_in_RFData : std_logic_vector(Dwidth-1 downto 0); -- RF output to bus (through tri-state)
-	signal reg_a_out : std_logic_vector(Dwidth-1 downto 0); -- output out of Reg_A
-	signal reg_c_in : std_logic_vector(Dwidth-1 downto 0); -- output from ALU into Reg_C
-	signal data_write_en_mux: std_logic; -- output of Mux between Data_MemEn & data_wren
-	signal data_write_content_mux : std_logic_vector(Dwidth-1 downto 0); -- output of mux between bus & TB data_writeData
-	signal Data_write_addr_mux : std_logic_vector(Awidth-1 downto 0); -- output of mux between D-FF & TB data_writeaddr
-	signal Data_read_addr_mux : std_logic_vector(Awidth-1 downto 0); -- output of mux between bus & TB data_readaddr
-	signal Tri_Data_mem_output : std_logic_vector(Dwidth-1 downto 0); -- output of DataMem, splitting to tri-state and TB data_readdata
-	signal Tri_in_regC: std_logic_vector(Dwidth-1 downto 0); -- Register C output to bus (through tri-state)
-	signal DFF_output_to_write_addr: std_logic_vector(Dwidth-1 downto 0); -- output of D-FF holding address to write into DataMem
+
+architecture DataArc of Datapath is
+
+    signal rf_addr_mux_r              : std_logic_vector(3 downto 0);
+    signal imm1_ext_r, imm2_ext_r     : std_logic_vector(Dwidth-1 downto 0);
+    signal imm_pc_r                   : std_logic_vector(7 downto 0);
+    signal pc_addr_r                  : std_logic_vector(Awidth-1 downto 0);
+    signal instr_r                    : std_logic_vector(Dwidth-1 downto 0);
+    signal bus_a_r                    : std_logic_vector(Dwidth-1 downto 0);
+    signal bus_b_r                    : std_logic_vector(Dwidth-1 downto 0);
+    signal rf_data_r                  : std_logic_vector(Dwidth-1 downto 0);
+    signal reg_a_q                    : std_logic_vector(Dwidth-1 downto 0);
+    signal data_wr_en_mux_r           : std_logic;
+    signal data_wr_data_mux_r         : std_logic_vector(Dwidth-1 downto 0);
+    signal data_wr_addr_mux_r         : std_logic_vector(Awidth-1 downto 0);
+	signal data_addr_out_mux_r 		  : std_logic_vector(Awidth-1 downto 0);
+	signal data_addr_in_mux_r  		  : std_logic_vector(Awidth-1 downto 0);
+    signal data_rd_addr_mux_r         : std_logic_vector(Awidth-1 downto 0);
+	signal data_wr_addr_mux_q         : std_logic_vector(Awidth-1 downto 0);
+	signal data_rd_addr_mux_q         : std_logic_vector(Awidth-1 downto 0);
+    signal data_mem_out_r             : std_logic_vector(Dwidth-1 downto 0);
+    signal mem_addr_dff_q             : std_logic_vector(Dwidth-1 downto 0);
+
 begin
 
-	---------------------- PORT MAPS ----------------------
-	mapIR: IR generic map(Dwidth) port map (
-		-- inputs --
-		clk => clk, ena => IRin, rst => RF_rst,
-		ctrl_RFaddr => RF_addr,
-		i_IR_content => instruction_to_IR,
-		-- outputs --
-		o_OPCODE => o_opcode,
-		o_addr => RFaddrMuxRes,
-		o_signext1 => Tri_in_ext1, o_signext2 => Tri_in_ext2,
-		o_imm_to_PC => imm_to_PC
-		);
-	
-	mapProgMem: ProgMem generic map(Dwidth,Awidth,dept) port map(
-		-- inputs --
-		clk => clk, memEn => prog_wren, WmemData => dataIn,
-		WmemAddr => writeaddr, RmemAddr => ProgReadAddr,
-		-- outputs --
-		RmemData => instruction_to_IR
-		);
-	
-	mapPC: PCLogic generic map(Awidth) port map(
-		-- inputs --
-		clk => clk, i_PCin => Pcin, i_PCsel => PCsel,
-		i_IR_imm => imm_to_PC,
-		-- outputs --
-		o_currentPC => ProgReadAddr
-		);
-	
-	mapRegisterFile: RF port map(
-		-- inputs --
-		clk => clk, rst => RF_rst, WregEn => RF_WregEn,
-		WregData => BusSignal, RregAddr => RFaddrMuxRes, WregAddr => RFaddrMuxRes,
-		-- outputs --
-		RregData => Tri_in_RFData
-		);
-	
-	mapALU: ALU_main generic map(Dwidth) port map(
-		reg_a_out, BusSignal, ALU_op, reg_c_in, alu_c, alu_n, alu_z);
+    -- IR
+    mapIR: IR generic map(Dwidth) port map (
+        clk_i         => clk_i,
+        ena_i        => ena_i,
+        rst_i         => rst_i,
+        RFaddr_rd_i   => RF_addr_rd_i,
+        RFaddr_wr_i   => RF_addr_wr_i,
+        IR_content_i  => instr_r,
+        o_opcode      => o_opcode,
+        signext1_o    => imm1_ext_r,
+        signext2_o    => imm2_ext_r,
+        imm_to_PC_o   => imm_pc_r
+    );
 
-	mapDataMem: dataMem generic map(Dwidth, Awidth, dept) port map(
-		-- inputs --
-		clk => clk, memEn => data_write_en_mux, WmemData => data_write_content_mux,
-		WmemAddr => Data_write_addr_mux, RmemAddr => Data_read_addr_mux,
-		-- outputs --
-		RmemData => Tri_Data_mem_output
-		);
+    -- Program Memory
+    mapProgMem: ProgMem generic map(Dwidth, Awidth, dept) port map(
+        clk => clk_i, memEn => ITCM_tb_wr_i, WmemData => ITCM_tb_in_i,
+        WmemAddr => ITCM_tb_addr_in_i, RmemAddr => pc_addr_r,
+        RmemData => instr_r
+    );
 
-	mapReg_A: GenericRegister generic map(Dwidth) port map(
-		clk, Ain, RF_rst, BusSignal, reg_a_out);
+    -- PC Logic
+    mapPC: PCLogic generic map(Awidth) port map(
+        clk_i => clk_i, i_PCin => PCin, i_PCsel => PCsel,
+        IR_imm_i => imm_pc_r,
+        currentPC_o => pc_addr_r
+    );
 
-	mapReg_C: GenericRegister generic map(Dwidth) port map(
-		clk, Cin, RF_rst, reg_c_in, Tri_in_regC);
-		
-	mapMemIn_D_FF: GenericRegister generic map(Dwidth) port map(
-		clk, Mem_in, RF_rst, BusSignal, DFF_output_to_write_addr);
+    -- Register File
+    mapRegisterFile: RF port map(
+        clk => clk_i, rst => rst_i, WregEn => RF_WregEn_i,
+        WregData => bus_a_r, RregAddr => rf_addr_mux_r, WregAddr => rf_addr_mux_r,
+        RregData => rf_data_r
+    );
 
-	tristate_imm1: bus_pour_tristate generic map(Dwidth) port map(Tri_in_ext1, BusSignal, Imm1_in);
-	tristate_imm2: bus_pour_tristate generic map(Dwidth) port map(Tri_in_ext2, BusSignal, Imm2_in);
-	tristate_RF_data: bus_pour_tristate generic map(Dwidth) port map(Tri_in_RFData, BusSignal, RF_out);
-	tristate_data_out: bus_pour_tristate generic map(Dwidth) port map(Tri_Data_mem_output, BusSignal, Data_mem_out);
-	tristate_Cout: bus_pour_tristate generic map(Dwidth) port map (Tri_in_regC, BusSignal, Cout);
-	-------------------------------------------------------
-	data_readdata <= Tri_Data_mem_output; -- output of DataMem towards TB
+    -- ALU (writes directly to bus A)
+    mapALU: ALU_main generic map(Dwidth) port map(
+        reg_a_q_i   => reg_a_q,
+        reg_b_r_i   => bus_b_r,
+        i_ctrl    	=> ALU_op,
+		Ain_i		=> Ain_i,
+        result_o    => bus_a_r,
+        cflag_o     => alu_c_o,
+        nflag_o     => alu_n_o,
+        zflag_o     => alu_z_o
+    );
+
+    -- Register A
+    mapReg_A: GenericRegister generic map(Dwidth) port map(
+        clk_i   => clk_i,
+        ena_i   => Ain_i,
+        rst_i   => rst_i,
+        d_i     => bus_a_r,
+        q_o     => reg_a_q
+    );
+
+    -- Data Memory
+    mapDataMem: dataMem generic map(Dwidth, Awidth, dept) port map(
+        clk => clk_i, memEn => data_wr_en_mux_r, WmemData => data_wr_data_mux_r,
+        WmemAddr => data_wr_addr_mux_r, RmemAddr => data_rd_addr_mux_r,
+        RmemData => data_mem_out_r
+    );
+
+    -- DFF for memory address read
+    mapMemIn_D_FF_rd: GenericRegister generic map(Awidth) port map(
+        clk_i   => clk_i,
+        ena_i   => DTCM_addr_out_i,
+        rst_i   => rst_i,
+        d_i     => data_addr_out_mux_r,
+        q_o     => data_rd_addr_mux_q
+    );
+	-- DFF for memory address write
+    mapMemIn_D_FF_wr: GenericRegister generic map(Awidth) port map(
+        clk_i   => clk_i,
+        ena_i   => DTCM_addr_in_i,
+        rst_i   => rst_i,
+        d_i     => data_addr_in_mux_r,
+        q_o     => data_wr_addr_mux_q
+    );
+
+	-- Imm1
+	tristate_imm1: BidirPin generic map(Dwidth) port map(
+		i_data  => imm1_ext_r,
+		enable_out    => Imm1_in_i,
+		o_data => bus_b_r
+	);
+
+	-- Imm2
+	tristate_imm2: BidirPin generic map(Dwidth) port map(
+		i_data  => imm2_ext_r,
+		enable_out    => Imm2_in_i,
+		o_data => bus_b_r
+	);
+
+	-- Register File output
+	tristate_RF_data: BidirPin generic map(Dwidth) port map(
+		i_data  => rf_data_r,
+		enable_out    => RF_out_i,
+		o_data => bus_b_r
+	);
+
+	-- Data memory output
+	tristate_data_out: BidirPin generic map(Dwidth) port map(
+		i_data  => data_mem_out_r,
+		enable_out    => DTCM_out_i,
+		o_data => bus_b_r
+	);
+    -- Output to TB
+    DTCM_tb_out <= data_mem_out_r;
+
+    -- MUX logic for TB vs CPU memory control
+    data_wr_en_mux_r      <= DTCM_wr_i when tb_active_i = '0' else DTCM_tb_wr_i;
+    data_wr_data_mux_r    <= bus_b_r       when tb_active_i = '0' else DTCM_tb_in_i;
+    data_wr_addr_mux_r    <= data_wr_addr_mux_q(Awidth-1 downto 0) when tb_active_i = '0' else DTCM_tb_addr_in_i;
+    data_rd_addr_mux_r    <= data_rd_addr_mux_q(Awidth-1 downto 0) when tb_active_i = '0' else DTCM_tb_addr_out_i;
+	data_addr_out_mux_r	  <= bus_a_r(Awidth-1 downto 0)	when DTCM_addr_sel_i = '0' else bus_b_r(Awidth-1 downto 0);
+	data_addr_in_mux_r	  <= bus_a_r(Awidth-1 downto 0)	when DTCM_addr_sel_i = '0' else bus_b_r(Awidth-1 downto 0);
 	
-	----------------- TB interaction MUXs -----------------
-	data_write_en_mux <= Data_MemEn when TBactive='0' else data_wren;
-	data_write_content_mux <= BusSignal when TBactive='0' else data_writeData;
-	Data_write_addr_mux <= DFF_output_to_write_addr(Awidth-1 downto 0) when TBactive='0' else data_writeaddr;
-	Data_read_addr_mux <= BusSignal(Awidth-1 downto 0) when TBactive='0' else data_readaddr;
-	-------------------------------------------------------
-	
 
-end DataArch;
+end DataArc;
+
