@@ -10,10 +10,10 @@ entity IR is
         clk_i        : in std_logic;
         ena_i        : in std_logic;  -- enable = IRin
         rst_i        : in std_logic;  -- reset = system_rst
-        RFaddr_rd_i  : in std_logic_vector(1 downto 0);
-		RFaddr_wr_i  : in std_logic_vector(1 downto 0);
+        RFaddr_rd_o  : in std_logic_vector(1 downto 0);
+		RFaddr_wr_o  : in std_logic_vector(1 downto 0);
         IR_content_i  : in std_logic_vector(Dwidth-1 downto 0);
-
+		addr_rd_o, addr_wr_o   : out std_logic_vector(3 downto 0);
         o_OPCODE      : out std_logic_vector(3 downto 0);
         signext1_o    : out std_logic_vector(Dwidth-1 downto 0);
         signext2_o    : out std_logic_vector(Dwidth-1 downto 0);
@@ -29,7 +29,7 @@ architecture IRArch of IR is
 
     -- Extracted fields
     signal ra_r, rb_r, rc_r       : std_logic_vector(3 downto 0);
-	signal addr_rd_o, addr_wr_o   : std_logic_vector(3 downto 0);
+
     signal immShort_r             : std_logic_vector(3 downto 0);
     signal immLong_r              : std_logic_vector(7 downto 0);
 
@@ -57,13 +57,13 @@ begin
     imm_to_PC_o  <= IR_q(7 downto 0);
 
     -- Register File address selection
-    with RFaddr_rd_i select -- choose which reg to read from
+    with RFaddr_rd_o select -- choose which reg to read from
         addr_rd_o <= ra_r when "01",
                   rb_r when "10",
                   rc_r when "11",
                   "0000" when others;
 				  
-	with RFaddr_wr_i select -- choose which reg to write to
+	with RFaddr_wr_o select -- choose which reg to write to
         addr_wr_o <= ra_r when "01",
                   rb_r when "10",
                   rc_r when "11",

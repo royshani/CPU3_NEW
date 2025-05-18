@@ -51,8 +51,8 @@ ARCHITECTURE topArch OF top IS
 	 signal Ain_i            : std_logic;
 	 signal RF_WregEn_i      : std_logic;
 	 signal RF_out_o         : std_logic;
-	 signal RF_addr_rd_o     : std_logic_vector(1 downto 0);
-	 signal RF_addr_wr_o     : std_logic_vector(1 downto 0);
+	 signal RF_addr_rd_i     : std_logic_vector(1 downto 0);
+	 signal RF_addr_wr_i     : std_logic_vector(1 downto 0);
 	 signal IRin_i           : std_logic;
 	 signal PCin           : std_logic;
 	 signal PCsel          : std_logic_vector(1 downto 0);
@@ -85,8 +85,8 @@ BEGIN
         Ain_i              => Ain_i,
         RF_WregEn_i        => RF_WregEn_i,
         RF_out_o           => RF_out_o,
-        RF_addr_rd_o       => RF_addr_rd_o,
-        RF_addr_wr_o       => RF_addr_wr_o,
+        RF_addr_rd_i       => RF_addr_rd_i,
+        RF_addr_wr_i       => RF_addr_wr_i,
         IRin_i             => IRin_i,
         PCin             => PCin,
         PCsel            => PCsel,
@@ -125,8 +125,8 @@ BEGIN
         Ain_o              => Ain_i,
         RF_WregEn_o        => RF_WregEn_i,
         RF_out_o           => RF_out_o,
-        RF_addr_rd_o       => RF_addr_rd_o,
-        RF_addr_wr_o       => RF_addr_wr_o,
+        RF_addr_rd_o       => RF_addr_rd_i,
+        RF_addr_wr_o       => RF_addr_wr_i,
         IRin_o             => IRin_i,
         PCin             => PCin,
         PCsel            => PCsel,

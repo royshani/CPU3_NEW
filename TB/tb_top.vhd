@@ -17,9 +17,9 @@ end tb_top;
 --------------------------------------------------------------
 architecture tb_top_arch of tb_top is
 	-- used for file operation --
-    constant input_ProgData_loc : string := "C:/Users/yanai/Local/Documents/Yanai/University/LABS/CPU Architercture/Lab3/datapath_code/ITCMinit.txt";
-    constant input_DataMem_loc  : string := "C:/Users/yanai/Local/Documents/Yanai/University/LABS/CPU Architercture/Lab3/datapath_code/DTCMinit.txt";
-    constant output_file_loc    : string := "C:/Users/yanai/Local/Documents/Yanai/University/LABS/CPU Architercture/Lab3/datapath_code/DTCMcontent.txt";
+    constant input_ProgData_loc : string := "C:\intelFPGA\CPU3_NEW\files\ITCMinit.txt";
+    constant input_DataMem_loc  : string := "C:\intelFPGA\CPU3_NEW\files\DTCMinit.txt";
+    constant output_file_loc    : string := "C:\intelFPGA\CPU3_NEW\files\DTCMcontent.txt";
 	
 	signal so_done : std_logic;
 	signal gen : boolean := false; -- file reading trigger

@@ -27,8 +27,8 @@ package aux_package is
 			clk_i         : in  std_logic;
 			ena_i         : in  std_logic;
 			rst_i         : in  std_logic;
-			RFaddr_rd_o   : in  std_logic_vector(1 downto 0);
-			RFaddr_wr_o   : in  std_logic_vector(1 downto 0);
+			RFaddr_rd_i   : in  std_logic_vector(1 downto 0);
+			RFaddr_wr_i   : in  std_logic_vector(1 downto 0);
 			addr_rd_o, addr_wr_o   : out std_logic_vector(3 downto 0);
 			IR_content_i  : in  std_logic_vector(Dwidth-1 downto 0);
 			o_opcode      : out std_logic_vector(3 downto 0);

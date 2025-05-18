@@ -63,8 +63,8 @@ architecture ControlArch of ControlUnit is
   signal DTCM_addr_in_i   : std_logic;
   signal DTCM_out_i       : std_logic;
 
---  signal RF_addr_rd_o     : std_logic_vector(1 downto 0);
---  signal RF_addr_wr_o     : std_logic_vector(1 downto 0);
+  signal RF_addr_rd_o     : std_logic_vector(1 downto 0);
+  signal RF_addr_wr_o     : std_logic_vector(1 downto 0);
 
   signal IRin_i           : std_logic;
 
@@ -126,7 +126,7 @@ begin
             RF_WregEn_o       => RF_WregEn_i,
             RF_out_o          => RF_out_o,
             RF_addr_rd_o      => RF_addr_rd_o,
-            RF_addr_wr_o      => RF_addr_wr_o,
+            RF_addr_wr_o      => RF_addr_wr_i,
             IRin_o            => IRin_i,
             PCin            => PCin,
             PCsel           => PCsel,

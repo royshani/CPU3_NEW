@@ -222,7 +222,7 @@ begin
 				
             when 17 =>  -- LD phase 1 
 				PCin          <=  '0';
-				DTCM_addr_out_o <= '1';
+
 				IRin_o          <=  '0';
 				Ain_o        <= '0';
 				report "LD1 writeback state reached" severity note;
@@ -231,6 +231,7 @@ begin
             when 18 =>  -- LD → register write 
                 -- maybe add DTCM write
 				bus_ctrl_r		<= "0100";
+				DTCM_addr_out_o <= '1';
 				Ain_o			<= '1';
 				RF_WregEn_o		<= '1';
 				RF_addr_wr_o	<= "01";
