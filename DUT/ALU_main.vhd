@@ -14,7 +14,7 @@ entity ALU_main is
         reg_a_q_i : in  std_logic_vector(Dwidth-1 downto 0);
         reg_b_r_i : in  std_logic_vector(Dwidth-1 downto 0);
         i_ctrl  : in  std_logic_vector(2 downto 0);
-		Ain_i	  : in	std_logic;
+		Ain	  : in	std_logic;
         result_o  : out std_logic_vector(Dwidth-1 downto 0);
         cflag_o   : out std_logic;
         nflag_o   : out std_logic;
@@ -70,7 +70,7 @@ begin
     end generate;
 
     -- Output logic and flag assignment
-	process(i_ctrl, alu_a_r, alu_b_r, Ain_i)
+	process(i_ctrl, alu_a_r, alu_b_r, Ain)
 	begin
 		report "ALU OPERATION" severity note;
 		case i_ctrl is
@@ -80,7 +80,7 @@ begin
 			when "011" => alu_result_r <= reg_a_q_i or  reg_b_r_i;
 			when "100" => alu_result_r <= reg_a_q_i xor reg_b_r_i;
 			when "111" =>
-				if Ain_i = '1' then
+				if Ain = '1' then
 					alu_result_r <= reg_b_r_i;  -- MOVE bus_B into bus_A
 				else
 					alu_result_r <= (others => '0');

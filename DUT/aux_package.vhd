@@ -27,8 +27,8 @@ package aux_package is
 			clk_i         : in  std_logic;
 			ena_i         : in  std_logic;
 			rst_i         : in  std_logic;
-			RFaddr_rd_o   : in  std_logic_vector(1 downto 0);
-			RFaddr_wr_o   : in  std_logic_vector(1 downto 0);
+			RF_addr_rd_o   : in  std_logic_vector(1 downto 0);
+			RF_addr_wr_o   : in  std_logic_vector(1 downto 0);
 			addr_rd_o, addr_wr_o   : out std_logic_vector(3 downto 0);
 			IR_content_i  : in  std_logic_vector(Dwidth-1 downto 0);
 			o_opcode      : out std_logic_vector(3 downto 0);
@@ -88,7 +88,7 @@ package aux_package is
 			DTCM_addr_in_o  : out std_logic;
 			DTCM_out_o      : out std_logic;
 			ALU_op         : out std_logic_vector(2 downto 0);
-			Ain_o           : out std_logic;
+			Ain           : out std_logic;
 			RF_WregEn_o     : out std_logic;
 			RF_out_o        : out std_logic;
 			RF_addr_rd_o    : out std_logic_vector(1 downto 0);
@@ -96,8 +96,8 @@ package aux_package is
 			IRin_o          : out std_logic;
 			PCin          : out std_logic;
 			PCsel         : out std_logic_vector(1 downto 0);
-			Imm1_in_o       : out std_logic;
-			Imm2_in_o       : out std_logic;
+			Imm1_in       : out std_logic;
+			Imm2_in       : out std_logic;
 			done			: out std_logic;
 
 			-- Debug/status output
@@ -128,7 +128,7 @@ package aux_package is
 			DTCM_addr_in_o  : out std_logic;
 			DTCM_out_o      : out std_logic;
 			ALU_op         : out std_logic_vector(2 downto 0);
-			Ain_o           : out std_logic;
+			Ain           : out std_logic;
 			RF_WregEn_o     : out std_logic;
 			RF_out_o        : out std_logic;
 			RF_addr_rd_o    : out std_logic_vector(1 downto 0);
@@ -136,8 +136,8 @@ package aux_package is
 			IRin_o          : out std_logic;
 			PCin          : out std_logic;
 			PCsel         : out std_logic_vector(1 downto 0);
-			Imm1_in_o       : out std_logic;
-			Imm2_in_o       : out std_logic;
+			Imm1_in       : out std_logic;
+			Imm2_in       : out std_logic;
 
 			-- Output flags and status encoding
 			cflag_o         : out std_logic;
@@ -247,7 +247,7 @@ package aux_package is
 			reg_a_q_i   : in  std_logic_vector(Dwidth-1 downto 0);
 			reg_b_r_i   : in  std_logic_vector(Dwidth-1 downto 0);
 			i_ctrl	    : in  std_logic_vector(2 downto 0);
-			Ain_i	 	: in  std_logic;
+			Ain	 	: in  std_logic;
 			result_o    : out std_logic_vector(Dwidth-1 downto 0);
 			cflag_o     : out std_logic;
 			nflag_o     : out std_logic;
@@ -318,16 +318,16 @@ package aux_package is
 			DTCM_addr_in_i      : in std_logic;		
 			DTCM_out_i          : in std_logic;
 			ALU_op             : in std_logic_vector(2 downto 0); 
-			Ain_i               : in std_logic;
-			RF_WregEn_i         : in std_logic;
+			Ain               : in std_logic;
+			RF_WregEn_o         : in std_logic;
 			RF_out_o            : in std_logic;
 			RF_addr_rd_o        : in std_logic_vector(1 downto 0);
 			RF_addr_wr_o        : in std_logic_vector(1 downto 0);		
 			IRin_i              : in std_logic;
 			PCin              : in std_logic;
 			PCsel             : in std_logic_vector(1 downto 0);
-			Imm1_in_i           : in std_logic;
-			Imm2_in_i           : in std_logic;	
+			Imm1_in           : in std_logic;
+			Imm2_in           : in std_logic;	
 
 			-- TB inputs/outputs
 			DTCM_tb_out         : out std_logic_vector(Dwidth-1 downto 0);

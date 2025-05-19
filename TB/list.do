@@ -1,26 +1,32 @@
 onerror {resume}
-add list -width 18 /tb_top/TBactive
-add list /tb_top/so_done
-add list /tb_top/rst
-add list /tb_top/prog_done_reading
-add list /tb_top/ITCM_tb_wr
-add list /tb_top/ITCM_tb_in
-add list /tb_top/ITCM_tb_addr_in
-add list /tb_top/gen
-add list /tb_top/ena
-add list /tb_top/DTCM_tb_wr
-add list /tb_top/DTCM_tb_out
-add list /tb_top/DTCM_tb_in
-add list /tb_top/DTCM_tb_addr_out
-add list /tb_top/DTCM_tb_addr_in
-add list /tb_top/data_writing
-add list /tb_top/data_line_counter
-add list /tb_top/data_done_reading
-add list /tb_top/clk
+add list -width 51 /tb_top/mapTop/mapControl/ControlLines_inst/Ain_o
+add list /tb_top/mapTop/mapControl/ControlLines_inst/RF_out_o
+add list /tb_top/mapTop/mapControl/ControlLines_inst/RF_addr_rd_o
+add list /tb_top/mapTop/mapControl/ControlLines_inst/RF_addr_wr_o
+add list /tb_top/mapTop/mapControl/ControlLines_inst/done
+add list /tb_top/mapTop/mapControl/ControlLines_inst/bus_ctrl_r
+add list /tb_top/mapTop/mapDatapath/DTCM_addr_out_i
+add list /tb_top/mapTop/mapDatapath/DTCM_out_i
+add list /tb_top/mapTop/mapDatapath/RF_out_o
+add list /tb_top/mapTop/mapDatapath/RF_addr_rd_o
+add list /tb_top/mapTop/mapDatapath/RF_addr_wr_o
+add list /tb_top/mapTop/mapDatapath/bus_b_r
+add list /tb_top/mapTop/mapDatapath/bus_a_r
+add list /tb_top/mapTop/mapDatapath/reg_a_q
+add list /tb_top/mapTop/mapDatapath/mapRegisterFile/RregData
+add list /tb_top/mapTop/mapDatapath/mapRegisterFile/WregData
+add list /tb_top/mapTop/mapDatapath/rf_data_r
+add list /tb_top/mapTop/mapDatapath/addr_rd_o
+add list /tb_top/mapTop/mapDatapath/addr_wr_o
+add list /tb_top/mapTop/mapDatapath/bus_a_r
+add list /tb_top/mapTop/mapControl/ControlLines_inst/Imm1_in
+add list /tb_top/mapTop/mapControl/ControlLines_inst/Imm2_in
+add list /tb_top/mapTop/mapControl/ControlLines_inst/bus_ctrl_r
+add list /tb_top/mapTop/mapDatapath/Ain_i
 configure list -usestrobe 0
 configure list -strobestart {0 ps} -strobeperiod {0 ps}
 configure list -usesignaltrigger 1
-configure list -delta collapse
+configure list -delta all
 configure list -signalnamewidth 0
 configure list -datasetprefix 0
 configure list -namelimit 5

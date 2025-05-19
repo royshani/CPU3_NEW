@@ -32,8 +32,8 @@ entity Datapath is
         DTCM_addr_in_i  : in std_logic;		
         DTCM_out_i      : in std_logic;
         ALU_op         : in std_logic_vector(2 downto 0); 
-        Ain_i           : in std_logic;
-        RF_WregEn_i     : in std_logic;
+        Ain           : in std_logic;
+        RF_WregEn_o     : in std_logic;
         RF_out_o        : in std_logic;
         RF_addr_rd_o    : in std_logic_vector(1 downto 0);
         RF_addr_wr_o    : in std_logic_vector(1 downto 0);	
@@ -41,8 +41,8 @@ entity Datapath is
         IRin_i          : in std_logic;
         PCin          : in std_logic;
         PCsel         : in std_logic_vector(1 downto 0);
-        Imm1_in_i       : in std_logic;
-        Imm2_in_i       : in std_logic;
+        Imm1_in       : in std_logic;
+        Imm2_in       : in std_logic;
 
 		-- TB inputs
 		DTCM_tb_out    	    : out std_logic_vector(Dwidth-1 downto 0);
@@ -88,8 +88,8 @@ begin
         clk_i         => clk_i,
         ena_i        => ena_i,
         rst_i         => rst_i,
-        RFaddr_rd_o   => RF_addr_rd_o,
-        RFaddr_wr_o   => RF_addr_wr_o,
+        RF_addr_rd_o   => RF_addr_rd_o,
+        RF_addr_wr_o   => RF_addr_wr_o,
         IR_content_i  => instr_r,
         o_opcode      => o_opcode,
 		addr_rd_o	  => addr_rd_o,
@@ -115,7 +115,7 @@ begin
 
     -- Register File
     mapRegisterFile: RF port map(
-        clk => clk_i, rst => rst_i, WregEn => RF_WregEn_i,
+        clk => clk_i, rst => rst_i, WregEn => RF_WregEn_o,
         WregData => bus_a_r, RregAddr => addr_rd_o, WregAddr => addr_wr_o,
         RregData => rf_data_r
     );
@@ -125,7 +125,7 @@ begin
         reg_a_q_i   => reg_a_q,
         reg_b_r_i   => bus_b_r,
         i_ctrl    	=> ALU_op,
-		Ain_i		=> Ain_i,
+		Ain		=> Ain,
         result_o    => bus_a_r,
         cflag_o     => alu_c_o,
         nflag_o     => alu_n_o,
@@ -135,7 +135,7 @@ begin
     -- Register A
     mapReg_A: GenericRegister generic map(Dwidth) port map(
         clk_i   => clk_i,
-        ena_i   => Ain_i,
+        ena_i   => Ain,
         rst_i   => rst_i,
         d_i     => bus_a_r,
         q_o     => reg_a_q
@@ -168,14 +168,14 @@ begin
 	-- Imm1
 	tristate_imm1: BidirPin generic map(Dwidth) port map(
 		i_data  => imm1_ext_r,
-		enable_out    => Imm1_in_i,
+		enable_out    => Imm1_in,
 		o_data => bus_b_r
 	);
 
 	-- Imm2
 	tristate_imm2: BidirPin generic map(Dwidth) port map(
 		i_data  => imm2_ext_r,
-		enable_out    => Imm2_in_i,
+		enable_out    => Imm2_in,
 		o_data => bus_b_r
 	);
 

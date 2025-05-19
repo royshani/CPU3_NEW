@@ -1,0 +1,19 @@
+onerror {resume}
+add list -width 34 /tb_top/mapTop/mapDatapath/clk_i
+add list /tb_top/mapTop/mapDatapath/ena_i
+add list /tb_top/mapTop/mapDatapath/o_opcode
+add list /tb_top/mapTop/mapDatapath/RF_addr_rd_o
+add list /tb_top/mapTop/mapDatapath/RF_addr_wr_o
+add list /tb_top/mapTop/mapDatapath/IRin_i
+add list /tb_top/mapTop/mapDatapath/addr_rd_o
+add list /tb_top/mapTop/mapDatapath/addr_wr_o
+add list /tb_top/mapTop/mapDatapath/bus_a_r
+add list /tb_top/mapTop/mapDatapath/bus_b_r
+add list /tb_top/mapTop/mapDatapath/rf_data_r
+configure list -usestrobe 0
+configure list -strobestart {0 ps} -strobeperiod {0 ps}
+configure list -usesignaltrigger 1
+configure list -delta all
+configure list -signalnamewidth 0
+configure list -datasetprefix 0
+configure list -namelimit 5

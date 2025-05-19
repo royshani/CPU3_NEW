@@ -48,16 +48,16 @@ ARCHITECTURE topArch OF top IS
 	 signal DTCM_out_i       : std_logic;
 	 signal DTCM_wr_i 		  : std_logic;
 	 signal ALU_op          : std_logic_vector(2 downto 0);
-	 signal Ain_i            : std_logic;
-	 signal RF_WregEn_i      : std_logic;
+	 signal Ain            : std_logic;
+	 signal RF_WregEn_o      : std_logic;
 	 signal RF_out_o         : std_logic;
 	 signal RF_addr_rd_o     : std_logic_vector(1 downto 0);
 	 signal RF_addr_wr_o     : std_logic_vector(1 downto 0);
 	 signal IRin_i           : std_logic;
 	 signal PCin           : std_logic;
 	 signal PCsel          : std_logic_vector(1 downto 0);
-	 signal Imm1_in_i        : std_logic;
-	 signal Imm2_in_i        : std_logic;
+	 signal Imm1_in        : std_logic;
+	 signal Imm2_in        : std_logic;
 	 signal status_bits_r    : std_logic_vector(14 downto 0);
 	 signal done_r			  : std_logic;
 
@@ -82,16 +82,16 @@ BEGIN
         DTCM_addr_in_i     => DTCM_addr_in_i,
         DTCM_out_i         => DTCM_out_i,
         ALU_op            => ALU_op,
-        Ain_i              => Ain_i,
-        RF_WregEn_i        => RF_WregEn_i,
+        Ain              => Ain,
+        RF_WregEn_o        => RF_WregEn_o,
         RF_out_o           => RF_out_o,
         RF_addr_rd_o       => RF_addr_rd_o,
         RF_addr_wr_o       => RF_addr_wr_o,
         IRin_i             => IRin_i,
         PCin             => PCin,
         PCsel            => PCsel,
-        Imm1_in_i          => Imm1_in_i,
-        Imm2_in_i          => Imm2_in_i,
+        Imm1_in          => Imm1_in,
+        Imm2_in          => Imm2_in,
 
         DTCM_tb_out        => DTCM_tb_out,
         tb_active_i        => tb_active_i,
@@ -122,16 +122,16 @@ BEGIN
         DTCM_addr_in_o     => DTCM_addr_in_i,
         DTCM_out_o         => DTCM_out_i,
         ALU_op            => ALU_op,
-        Ain_o              => Ain_i,
-        RF_WregEn_o        => RF_WregEn_i,
+        Ain              => Ain,
+        RF_WregEn_o        => RF_WregEn_o,
         RF_out_o           => RF_out_o,
         RF_addr_rd_o       => RF_addr_rd_o,
         RF_addr_wr_o       => RF_addr_wr_o,
         IRin_o             => IRin_i,
         PCin             => PCin,
         PCsel            => PCsel,
-        Imm1_in_o          => Imm1_in_i,
-        Imm2_in_o          => Imm2_in_i,
+        Imm1_in          => Imm1_in,
+        Imm2_in          => Imm2_in,
 
 
         status_bits_o      => status_bits_r(14 downto 0)

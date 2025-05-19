@@ -24,7 +24,9 @@ entity ControlUnit is
 		done		  : out std_logic;
         -- Instruction opcode (from IR)
         i_opcode      : in std_logic_vector(3 downto 0);
-
+		
+		RF_addr_rd_o    : out std_logic_vector(1 downto 0);
+        RF_addr_wr_o    : out std_logic_vector(1 downto 0);	
         -- Datapath control signals
         DTCM_wr_o       : out std_logic;
 		DTCM_addr_sel_o : out std_logic;		
@@ -32,18 +34,16 @@ entity ControlUnit is
         DTCM_addr_in_o  : out std_logic;		
         DTCM_out_o      : out std_logic;
         ALU_op         : out std_logic_vector(2 downto 0); -- !!! needs to be change to ALUFN_o
-        Ain_o           : out std_logic;
+        Ain           : out std_logic;
         RF_WregEn_o     : out std_logic;
         RF_out_o        : out std_logic;
 		
-		
-		RF_addr_rd_o    : out std_logic_vector(1 downto 0);
-        RF_addr_wr_o    : out std_logic_vector(1 downto 0);		
+	
 		IRin_o          : out std_logic;
 		PCin          : out std_logic;
         PCsel         : out std_logic_vector(1 downto 0);
-        Imm1_in_o       : out std_logic;
-		Imm2_in_o       : out std_logic;
+        Imm1_in       : out std_logic;
+		Imm2_in       : out std_logic;
 
         -- Debug/Status output: concatenated flags and opcode status
         status_bits_o : out std_logic_vector(14 downto 0)
@@ -69,13 +69,13 @@ architecture ControlArch of ControlUnit is
   signal IRin_i           : std_logic;
 
   
-  signal Imm1_in_i        : std_logic;
-  signal Imm2_in_i        : std_logic;
+  --signal Imm1_in        : std_logic;
+  --signal Imm2_in        : std_logic;
 
 
-  signal Ain_i            : std_logic;
-  signal RF_WregEn_i      : std_logic;
---  signal RF_out_o         : std_logic;
+  --signal Ain            : std_logic;
+  --signal RF_WregEn_o      : std_logic;
+  --signal RF_out_o         : std_logic;
 
   -- And if you want to collect flags/status in one bus:
   signal cflag_i          : std_logic;
@@ -118,20 +118,20 @@ begin
             -- Outputs to datapath
             DTCM_wr_o         => DTCM_wr_i,
             DTCM_addr_sel_o   => DTCM_addr_sel_i,
-            DTCM_addr_out_o   => DTCM_addr_out_i,
+            DTCM_addr_out_o   => DTCM_addr_out_o,
             DTCM_addr_in_o    => DTCM_addr_in_i,
             DTCM_out_o        => DTCM_out_o,
             ALU_op           => ALU_op,
-            Ain_o             => Ain_i,
-            RF_WregEn_o       => RF_WregEn_i,
+            Ain             => Ain,
+            RF_WregEn_o       => RF_WregEn_o,
             RF_out_o          => RF_out_o,
             RF_addr_rd_o      => RF_addr_rd_o,
             RF_addr_wr_o      => RF_addr_wr_o,
             IRin_o            => IRin_i,
             PCin            => PCin,
             PCsel           => PCsel,
-            Imm1_in_o         => Imm1_in_i,
-            Imm2_in_o         => Imm2_in_i,
+            Imm1_in         => Imm1_in,
+            Imm2_in         => Imm2_in,
 
             -- Flags to status register
             status_bits_o   => status_bits_o(14 downto 0)
